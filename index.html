@@ -3,21 +3,135 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Hola Mundo</title>
+    <title>Snake - WASD</title>
     <style>
         body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin: 2rem; text-align: center; }
-        button { padding: .5rem 1rem; font-size: 1rem; }
+        canvas { background:#111; display:block; margin:1rem auto; border: 4px solid #222; }
+        p { margin: .2rem 0; }
+        button { padding:.4rem .8rem; }
     </style>
 </head>
 <body>
-    <h1>¡Hola, mundo!</h1>
-    <p>Página de ejemplo en HTML.</p>
-    <button id="saludo">Mostrar saludo</button>
+    <h1>Snake (WASD)</h1>
+    <p>Usa W A S D para mover. R para reiniciar.</p>
+    <canvas id="game" width="400" height="400"></canvas>
 
     <script>
-        document.getElementById('saludo').addEventListener('click', () => {
-            alert('¡Hola, mundo!');
+        const canvas = document.getElementById('game');
+        if (!canvas) throw new Error('Canvas element with id "game" not found.');
+        const ctx = canvas.getContext && canvas.getContext('2d');
+        if (!ctx) throw new Error('2D rendering context not available.');
+
+        const CELL = 20;
+        const COLS = Math.floor(canvas.width / CELL);
+        const ROWS = Math.floor(canvas.height / CELL);
+        let snake, dir, nextDir, apple, running, loopId;
+
+        function startGame() {
+            snake = [{x: Math.floor(COLS/2), y: Math.floor(ROWS/2)}];
+            // initial length 4
+            for (let i = 1; i < 4; i++) snake.push({x: snake[0].x - i, y: snake[0].y});
+            dir = {x: 1, y: 0};
+            nextDir = { ...dir };
+            spawnApple();
+            running = true;
+            clearInterval(loopId);
+            loopId = setInterval(gameTick, 100);
+            draw();
+        }
+
+        function spawnApple() {
+            while (true) {
+                const a = {x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS)};
+                if (!snake.some(s => s.x === a.x && s.y === a.y)) { apple = a; break; }
+            }
+        }
+
+        function gameTick() {
+            // apply buffered direction (prevent exact reverse)
+            if ((nextDir.x !== -dir.x) || (nextDir.y !== -dir.y)) dir = nextDir;
+            const newHead = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+            // wall collision
+            if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+                endGame();
+                return;
+            }
+            // self collision
+            if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+                endGame();
+                return;
+            }
+
+            snake.unshift(newHead);
+            if (newHead.x === apple.x && newHead.y === apple.y) {
+                spawnApple();
+            } else {
+                snake.pop();
+            }
+            draw();
+        }
+
+        function endGame() {
+            running = false;
+            clearInterval(loopId);
+            // overlay message
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px system-ui, Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Juego terminado. Presiona R para reiniciar', canvas.width/2, canvas.height/2);
+        }
+
+        function draw() {
+            // background
+            ctx.fillStyle = '#081017';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+
+            // grid (subtle)
+            ctx.strokeStyle = '#0b1a22';
+            ctx.lineWidth = 1;
+            for (let i=0;i<=COLS;i++){
+                ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,canvas.height); ctx.stroke();
+            }
+            for (let j=0;j<=ROWS;j++){
+                ctx.beginPath(); ctx.moveTo(0,j*CELL); ctx.lineTo(canvas.width,j*CELL); ctx.stroke();
+            }
+
+            // apple
+            if (apple) {
+                ctx.fillStyle = '#e53935';
+                ctx.fillRect(apple.x*CELL+2, apple.y*CELL+2, CELL-4, CELL-4);
+            }
+
+            // snake
+            if (snake && snake.length) {
+                for (let i=0;i<snake.length;i++) {
+                    ctx.fillStyle = i===0 ? '#a5d6a7' : '#66bb6a';
+                    ctx.fillRect(snake[i].x*CELL+1, snake[i].y*CELL+1, CELL-2, CELL-2);
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w') nextDir = {x:0,y:-1};
+            if (k === 's') nextDir = {x:0,y:1};
+            if (k === 'a') nextDir = {x:-1,y:0};
+            if (k === 'd') nextDir = {x:1,y:0};
+            // optional: allow arrow keys too
+            if (k === 'arrowup') nextDir = {x:0,y:-1};
+            if (k === 'arrowdown') nextDir = {x:0,y:1};
+            if (k === 'arrowleft') nextDir = {x:-1,y:0};
+            if (k === 'arrowright') nextDir = {x:1,y:0};
+
+            if (!running && k === 'r') {
+                startGame();
+            }
         });
+
+        startGame();
     </script>
 </body>
 </html>
