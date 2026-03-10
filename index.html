@@ -107,9 +107,83 @@
 
             // snake
             if (snake && snake.length) {
-                for (let i=0;i<snake.length;i++) {
-                    ctx.fillStyle = i===0 ? '#a5d6a7' : '#66bb6a';
-                    ctx.fillRect(snake[i].x*CELL+1, snake[i].y*CELL+1, CELL-2, CELL-2);
+                // smoother, more polished snake: rounded segments, connectors, head gradient and eyes
+                for (let i = 0; i < snake.length; i++) {
+                    const seg = snake[i];
+                    const cx = seg.x * CELL + CELL / 2;
+                    const cy = seg.y * CELL + CELL / 2;
+                    const r = CELL * 0.45;
+
+                    // choose fill for segment (head gets gradient)
+                    let fillStyle;
+                    if (i === 0) {
+                        const g = ctx.createLinearGradient(
+                            cx - dir.x * CELL / 2, cy - dir.y * CELL / 2,
+                            cx + dir.x * CELL / 2, cy + dir.y * CELL / 2
+                        );
+                        g.addColorStop(0, '#e8f5e9');
+                        g.addColorStop(1, '#66bb6a');
+                        fillStyle = g;
+                        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+                        ctx.shadowBlur = 6;
+                    } else {
+                        const t = i / snake.length;
+                        // subtle hue shift down the body
+                        fillStyle = `hsl(${120 - t * 30}, 58%, ${52 - t * 10}%)`;
+                        ctx.shadowBlur = 0;
+                    }
+
+                    // draw segment circle
+                    ctx.fillStyle = fillStyle;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // connector to previous segment for smooth look
+                    if (i > 0) {
+                        const prev = snake[i - 1];
+                        const px = prev.x * CELL + CELL / 2;
+                        const py = prev.y * CELL + CELL / 2;
+                        const minx = Math.min(px, cx) - r;
+                        const miny = Math.min(py, cy) - r;
+                        const w = Math.abs(px - cx) + r * 2;
+                        const h = Math.abs(py - cy) + r * 2;
+                        ctx.fillStyle = fillStyle;
+                        ctx.fillRect(minx, miny, w, h);
+                    }
+
+                    // reset shadow after drawing head
+                    ctx.shadowBlur = 0;
+                    ctx.shadowColor = 'transparent';
+                }
+
+                // draw eyes on the head for personality
+                if (snake.length) {
+                    const head = snake[0];
+                    const hx = head.x * CELL + CELL / 2;
+                    const hy = head.y * CELL + CELL / 2;
+                    const hr = CELL * 0.35;
+                    // perpendicular to direction for eye separation
+                    const perpX = -dir.y;
+                    const perpY = dir.x;
+                    const eyeSep = hr * 0.6;
+                    const forward = hr * 0.6;
+
+                    const eye1x = hx + dir.x * forward + perpX * eyeSep;
+                    const eye1y = hy + dir.y * forward + perpY * eyeSep;
+                    const eye2x = hx + dir.x * forward - perpX * eyeSep;
+                    const eye2y = hy + dir.y * forward - perpY * eyeSep;
+
+                    // white of eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(eye1x, eye1y, hr * 0.22, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(eye2x, eye2y, hr * 0.22, 0, Math.PI * 2); ctx.fill();
+
+                    // pupils (slightly shifted forward)
+                    const pupilShift = 0.08 * CELL;
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath(); ctx.arc(eye1x + dir.x * pupilShift, eye1y + dir.y * pupilShift, hr * 0.11, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(eye2x + dir.x * pupilShift, eye2y + dir.y * pupilShift, hr * 0.11, 0, Math.PI * 2); ctx.fill();
                 }
             }
         }
